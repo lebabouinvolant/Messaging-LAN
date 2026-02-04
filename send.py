@@ -4,6 +4,7 @@ Docstring for send:
 Diverses conventions:
 la requete discovery UDP est de forme HELLO/USERNAME/TCPPORT
 toutes les requetes handshakes TCP seront de la forme HELLO/USERNAME/TCPPORT avec une taille fixée à 1024
+Tous les messages en TCP seront fait sous le format VERBE/USERNAME/DATA
 """
 
 from typing import List
@@ -88,8 +89,19 @@ def parseHelloMessage(data, addr, socketPeerIncoming = None):
     except:
         return False
 
+def handleMessage(msg : str):
+    processedMsg = msg.split("/")
+    if(processedMsg[0] == "SEND"):
+        #Basic message handling
+        print(f"{processedMsg[1]}: {processedMsg[2]}")
+
+def sendMessage(peer : Peer, msg : str):
+    data = f"SEND/{USERNAME}/{msg}"
+    peer.Sock.send(data.encode("utf-8"))
+    
+
 def handlePeer(peer : Peer):
-    buffer = ""
+    buffer : str = ""
     socketPeer = peer.Sock
     while True:
         data = socketPeer.recv(1024)
@@ -98,7 +110,7 @@ def handlePeer(peer : Peer):
         buffer += data.decode("utf-8")
         while "\n" in buffer:
             msg, buffer = buffer.split("\n", 1)
-
+            handleMessage(msg)
 
 sendHello()
 #listen()
