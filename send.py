@@ -22,7 +22,7 @@ broadcaster.bind((IP, UDPPORT))
 broadcaster.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
 TCPServer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-TCPServer.bind(("0.0.0.0", TCPPORT))
+TCPServer.bind((IP, TCPPORT))
 
 
 
@@ -45,7 +45,7 @@ def connect_to_peer(peer : Peer):
         Sock.connect((peer.ip, peer.port))
         Sock.send(f"HELLO/{USERNAME}/{TCPPORT}")
         peer.Sock = Sock
-
+        startPeerHandler(peer)
 
 
 def sendHello():
@@ -71,7 +71,10 @@ def listenTCP():
     while True:
         socketPeerIncoming, addr = TCPServer.accept()
         data = socketPeerIncoming.recv(1024).decode('utf-8')
-        parseHelloMessage(data, addr, socketPeerIncoming)
+        if parseHelloMessage(data, addr, socketPeerIncoming):
+            username = data.split("/")[1]
+            peer = findPeerFromUsername(username)
+            startPeerHandler(peer)
 
 def parseHelloMessage(data, addr, socketPeerIncoming = None):
     try:
@@ -97,7 +100,7 @@ def handleMessage(msg : str):
 
 def sendMessage(peer : Peer, msg : str):
     data = f"SEND/{USERNAME}/{msg}"
-    peer.Sock.send(data.encode("utf-8"))
+    peer.Sock.sendall((data+"\n").encode("utf-8"))
     
 
 def handlePeer(peer : Peer):
@@ -112,5 +115,20 @@ def handlePeer(peer : Peer):
             msg, buffer = buffer.split("\n", 1)
             handleMessage(msg)
 
-sendHello()
+def startPeerHandler(peer : Peer):
+    threading.Thread(target=handlePeer, args=(peer,)).start()
+
+
+def AppCLI():
+    print("Entrez votre nom d'utilisateur:")
+    USERNAME = input()
+    print(f"Bonjour {USERNAME}, envoi de la requête de HELLO UDP")
+    sendHello()
+    threading.Thread(target=listenTCP, daemon=True).start()
+    threading.Thread(target=listenUDP, daemon=True).start()
+
+    
+
+
+AppCLI()
 #listen()
